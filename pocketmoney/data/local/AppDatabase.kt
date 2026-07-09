@@ -8,8 +8,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @Database(
-    entities = [TransactionEntity::class, CategoryEntity::class, AccountEntity::class, CurrencyRateEntity::class], // Не забудь добавить сюда AccountEntity, когда создашь его
-    version = 1,
+    entities = [TransactionEntity::class, AccountEntity::class, CurrencyRateEntity::class], // Не забудь добавить сюда AccountEntity, когда создашь его
+    version = 2,
     exportSchema = false
 )
 

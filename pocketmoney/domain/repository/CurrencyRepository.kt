@@ -12,4 +12,5 @@ interface CurrencyRepository {
 
     // Разовое получение коэффициента конкретной валюты
     suspend fun getRate(code: String): Double
+    suspend fun getLastUpdateTime(): Long
 }

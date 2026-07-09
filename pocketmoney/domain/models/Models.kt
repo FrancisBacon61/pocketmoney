@@ -1,21 +1,11 @@
 package com.example.pocketmoney.domain.models
 
-// Сущность транзакции: доход или расход
 data class Transaction(
     val id: Long = 0,
     val amount: Double,
-    val categoryId: Long,
     val date: Long,
     val comment: String,
     val type: TransactionType
-)
-
-// Категория: например, "Продукты" или "Зарплата"
-data class Category(
-    val id: Long = 0,
-    val name: String,
-    val icon: String,
-    val color: String
 )
 
 // НОВОЕ: Сущность счета из ТЗ

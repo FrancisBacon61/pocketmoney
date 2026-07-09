@@ -24,7 +24,7 @@ class SettingsViewModel(
     fun setCurrency(code: String) {
         viewModelScope.launch {
             settingsManager.setCurrency(code)
-            refreshRates(code)
+            refreshRates(forceRefresh = false)
         }
     }
 
@@ -32,11 +32,10 @@ class SettingsViewModel(
         viewModelScope.launch { settingsManager.setBalanceHidden(hidden) }
     }
 
-    fun refreshRates(baseCode: String = currency.value) {
+    fun refreshRates(forceRefresh: Boolean = true) {
         viewModelScope.launch {
             _isRefreshing.value = true
-            // Вызываем UseCase
-            refreshCurrencyRatesUseCase()
+            refreshCurrencyRatesUseCase(forceRefresh = forceRefresh)
             _isRefreshing.value = false
         }
     }

@@ -9,6 +9,7 @@ import com.example.pocketmoney.domain.models.CurrencyRate
 import com.example.pocketmoney.domain.repository.CurrencyRepository
 // 2. ВАЖНО: Импортируем ИНТЕРФЕЙС из слоя Domain
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 // 3. Переименовываем класс в CurrencyRepositoryImpl и наследуемся от интерфейса (: CurrencyRepository)
@@ -18,6 +19,7 @@ class CurrencyRepositoryImpl(
     private val settingsManager: SettingsManager
 ) : CurrencyRepository { // <- Эта строчка связывает слой Data со слоем Domain
 
+    private val supportedCurrencies = setOf("RUB", "USD", "EUR", "KZT")
     // 4. Добавляем ключевое слово override, так как эти свойства и функции описаны в интерфейсе
     override val allRatesFlow: Flow<List<CurrencyRate>> = currencyDao.getAllRatesFlow().map { entities ->
         entities.map { CurrencyRate(code = it.code, rate = it.rate) }
@@ -26,9 +28,16 @@ class CurrencyRepositoryImpl(
     override suspend fun refreshRates(baseCurrency: String) {
         try {
             val response = apiService.getLatestRates(baseCurrency)
-            val rateEntities = response.rates.map { (code, rate) ->
+
+            // ИСПРАВЛЕНО: Фильтруем карту из API, оставляя только 3 валюты
+            val filteredRates = response.rates.filterKeys { it in supportedCurrencies }
+
+            // Теперь маппим уже отфильтрованный список
+            val rateEntities = filteredRates.map { (code, rate) ->
                 CurrencyRateEntity(code = code, rate = rate)
             }
+
+            // В базу данных запишутся только RUB, USD и EUR
             currencyDao.insertRates(rateEntities)
 
             val currentTimestamp = System.currentTimeMillis()
@@ -41,5 +50,8 @@ class CurrencyRepositoryImpl(
 
     override suspend fun getRate(code: String): Double {
         return currencyDao.getRateByCode(code) ?: 1.0
+    }
+    override suspend fun getLastUpdateTime(): Long {
+        return settingsManager.lastCurrencyUpdate.first()
     }
 }

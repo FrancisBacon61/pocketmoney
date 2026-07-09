@@ -1,5 +1,6 @@
 package com.example.pocketmoney.ui.home
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -12,7 +13,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -34,10 +34,8 @@ fun HomeScreen(
     onNavigateToTransactions: () -> Unit,
     onNavigateToSettings: () -> Unit
 ) {
-    // Получаем состояние экрана (Загрузка / Контент / Ошибка)
-    val uiState by viewModel.uiState.collectAsState()
-    // Получаем состояние всплывающих диалогов
-    val dialogState by viewModel.dialogState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val dialogState by viewModel.dialogState.collectAsStateWithLifecycle()
 
     PocketMoneyTheme {
         Scaffold(
@@ -86,64 +84,76 @@ fun HomeScreen(
                     }
                 }
                 is HomeUiState.Content -> {
-                    // Вытаскиваем чистые данные экрана из успешного состояния
                     val data = state.state
 
-                    Column(
+                    // Делаем КОРНЕВЫМ один общий LazyColumn вместо Column!
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(horizontal = 16.dp)
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // Отступ сверху
+                        item { Spacer(modifier = Modifier.height(16.dp)) }
 
-                        // Карточка баланса
-                        BalanceCard(
-                            balance = data.totalBalance,
-                            currency = data.currency,
-                            isHidden = data.isBalanceHidden,
-                            onClick = { viewModel.toggleBalanceVisibility() }
-                        )
-
-                        // Блок курсов валют
-                        if (data.rates.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            CurrencyRatesSection(rates = data.rates)
+                        // 1. Карточка баланса лежит внутри item
+                        item {
+                            BalanceCard(
+                                balance = data.totalBalance,
+                                currency = data.currency,
+                                isHidden = data.isBalanceHidden,
+                                onClick = { viewModel.toggleBalanceVisibility() }
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        // 2. Блок курсов валют (внутри item)
+                        if (data.rates.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                CurrencyRatesSection(rates = data.rates)
+                            }
+                        }
 
-                        Text(
-                            text = "Последние операции",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                        // 3. Заголовок (внутри item)
+                        item {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Text(
+                                text = "Последние операции",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
 
+                        // 4. Обработка списка транзакций
                         if (data.transactions.isEmpty()) {
-                            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text(text = "Список пуст", color = Color.Gray)
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp), // Фиксированная высота для красивого выравнивания
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = "Список пуст", color = Color.Gray)
+                                }
                             }
                         } else {
-                            LazyColumn(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                items(
-                                    items = data.transactions,
-                                    key = { it.id }
-                                ) { transaction ->
-                                    Box(modifier = Modifier
+                            // Прямо сюда выводим элементы транзакций! Никаких вложенных LazyColumn!
+                            items(
+                                items = data.transactions,
+                                key = { it.id }
+                            ) { transaction ->
+                                // Избавляемся от лишнего Box: вешаем клики прямо на Modifier элемента
+                                TransactionItem(
+                                    transaction = transaction,
+                                    currency = data.currency,
+                                    modifier = Modifier
                                         .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
                                         .combinedClickable(
                                             onClick = { /* Клик при необходимости */ },
                                             onLongClick = { viewModel.confirmDeleteTransaction(transaction) }
                                         )
-                                    ) {
-                                        TransactionItem(transaction = transaction, currency = data.currency)
-                                    }
-                                }
+                                )
                             }
                         }
                     }
@@ -271,7 +281,7 @@ fun BalanceCard(
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction, currency: String) {
+fun TransactionItem(transaction: Transaction, currency: String,modifier: Modifier = Modifier) {
     val dateString = remember(transaction.date) {
         val sdf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
         sdf.format(Date(transaction.date))
@@ -281,7 +291,7 @@ fun TransactionItem(transaction: Transaction, currency: String) {
     val expenseColor = Color(0xFFC62828)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(

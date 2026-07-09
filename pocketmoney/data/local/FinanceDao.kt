@@ -15,13 +15,6 @@ interface FinanceDao {
     @Delete
     suspend fun deleteTransaction(transaction: TransactionEntity)
 
-    // Категории
-    @Query("SELECT * FROM categories")
-    fun getAllCategories(): Flow<List<CategoryEntity>>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertCategory(category: CategoryEntity)
-
     // Аккаунт/Счет
     @Query("SELECT * FROM accounts LIMIT 1")
     fun getAccount(): Flow<AccountEntity?>

@@ -17,7 +17,6 @@ import com.example.pocketmoney.domain.usecase.AddTransactionUseCase
 import com.example.pocketmoney.domain.usecase.DeleteTransactionUseCase
 import com.example.pocketmoney.domain.usecase.GetTransactionsUseCase
 import com.example.pocketmoney.domain.usecase.GetAccountUseCase
-import com.example.pocketmoney.domain.usecase.GetCategoriesUseCase
 import com.example.pocketmoney.domain.usecase.RefreshCurrencyRatesUseCase
 import com.example.pocketmoney.domain.usecase.GetCurrencyRatesUseCase
 import com.example.pocketmoney.domain.usecase.GetHomeDisplayDataUseCase
@@ -53,6 +52,7 @@ val appModule = module {
             "pocket_money_db"
         )
             .addCallback(AppDatabase.getCallback())
+            .fallbackToDestructiveMigration(false)
             .build()
     }
 
@@ -69,7 +69,6 @@ val appModule = module {
     factoryOf(::DeleteTransactionUseCase)
     factoryOf(::GetTransactionsUseCase)
     factoryOf(::GetAccountUseCase)
-    factoryOf(::GetCategoriesUseCase)
     factoryOf(::RefreshCurrencyRatesUseCase)
     factoryOf(::GetCurrencyRatesUseCase)
     factoryOf(::GetRateUseCase)

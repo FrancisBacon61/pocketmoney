@@ -39,13 +39,10 @@ class MainActivity : ComponentActivity() {
                         )
                     }
 
-                    // Экран истории (фильтрация по дате/категории по ТЗ)
                     composable(Screen.Transactions.route) {
-                        // Пока заглушка
                         TransactionsScreen(onBack = { navController.popBackStack() })
                     }
 
-                    // Экран настроек (выбор валют по ТЗ)
                     composable(Screen.Settings.route) {
                         SettingsScreen(onBack = { navController.popBackStack() })
                     }

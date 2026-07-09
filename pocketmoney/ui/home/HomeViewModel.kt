@@ -27,7 +27,6 @@ class HomeViewModel(
         getHomeDisplayDataUseCase(),
         getCurrencyRatesUseCase().onStart { emit(emptyList()) }
     ) { domainData, currentRates ->
-        // Явно приводим возвращаемое значение к базовому интерфейсу HomeUiState
         HomeUiState.Content(
             state = HomeState(
                 transactions = domainData.transactions,
@@ -39,7 +38,7 @@ class HomeViewModel(
                 rates = currentRates,
                 isLoading = false
             )
-        ) as HomeUiState // <-- ДОБАВЬ ВОТ ЭТУ СТРОЧКУ СЮДА
+        ) as HomeUiState
     }.catch { emit(HomeUiState.Error(it.localizedMessage ?: "Unknown Error")) }
         .stateIn(
             scope = viewModelScope,
@@ -64,7 +63,6 @@ class HomeViewModel(
                 val currentCurrency = currentState.state.currency
                 val newTx = Transaction(
                     amount = amount,
-                    categoryId = 1L,
                     date = System.currentTimeMillis(),
                     comment = comment,
                     type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE
