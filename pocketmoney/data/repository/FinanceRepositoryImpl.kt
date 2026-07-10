@@ -19,7 +19,11 @@ class FinanceRepositoryImpl(
             entities.map { it.toDomain() }
         }
     }
-
+    override fun getRecentTransactions(): Flow<List<Transaction>> {
+        return dao.getRecentTransactionsFlow().map { entities ->
+            entities.map { it.toDomain() } // Твой привычный метод конвертации
+        }
+    }
     override fun getAccount(): Flow<Account?> {
         return dao.getAccount().map { it?.toDomain() }
     }

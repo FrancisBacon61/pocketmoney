@@ -14,7 +14,6 @@ class SettingsManager(private val context: Context) {
     private val hideBalanceKey = booleanPreferencesKey("hide_balance")
     private val lastUpdateKey = longPreferencesKey("last_currency_update")
 
-    // Поток настроек для UI
     val currency: Flow<String> = context.dataStore.data.map { it[currencyKey] ?: "RUB" }
     val isBalanceHidden: Flow<Boolean> = context.dataStore.data.map { it[hideBalanceKey] ?: false }
 

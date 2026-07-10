@@ -8,7 +8,8 @@ interface FinanceDao {
     // Транзакции
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<TransactionEntity>>
-
+    @Query("SELECT * FROM transactions ORDER BY date DESC LIMIT 20")
+    fun getRecentTransactionsFlow(): Flow<List<TransactionEntity>>
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(transaction: TransactionEntity)
 

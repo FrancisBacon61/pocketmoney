@@ -19,10 +19,10 @@ class GetHomeDisplayDataUseCase(
         val safeRatesFlow = currencyRepository.allRatesFlow.onStart { emit(emptyList()) }
 
         // Для доходов/расходов нам нужны абсолютно ВСЕ транзакции из базы данных
-        val allTransactionsFlow = financeRepository.getAllTransactions()
+        val recentTransactionsFlow = financeRepository.getRecentTransactions()
 
         return combine(
-            allTransactionsFlow,
+            recentTransactionsFlow,
             financeRepository.getAccount(), // Поток аккаунта из Room
             safeRatesFlow,
             settingsManager.currency,
