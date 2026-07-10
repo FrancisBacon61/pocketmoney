@@ -26,11 +26,6 @@ abstract class AppDatabase : RoomDatabase() {
 
                     // Запуск корутины для безопасной вставки данных в фоновом потоке
                     CoroutineScope(Dispatchers.IO).launch {
-                        // Вставляем дефолтную категорию напрямую через SQL-запрос при создании БД
-                        db.execSQL(
-                            "INSERT INTO categories (id, name, icon, color) VALUES (1, 'Общее', 'wallet', '#4CAF50')"
-                        )
-
                         // Заодно сразу создадим один главный аккаунт (счет), чтобы баланс не был null!
                         db.execSQL(
                             "INSERT INTO accounts (id, name, currentBalance) VALUES (1, 'Основной счет', 0.0)"

@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface FinanceRepository {
     fun getAllTransactions(): Flow<List<Transaction>>
-
+    fun getRecentTransactions(): Flow<List<Transaction>>
     // Изменено: получаем данные аккаунта (включая название и баланс)
     fun getAccount(): Flow<Account?>
 
