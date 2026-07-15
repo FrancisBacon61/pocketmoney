@@ -19,10 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.pocketmoney.domain.models.CurrencyRate // ИСПРАВЛЕНО: Импортируем доменную модель курсов
-import com.example.pocketmoney.domain.models.Transaction
+import com.example.pocketmoney.domain.models.CurrencyRate
 import com.example.pocketmoney.domain.models.TransactionType
+import com.example.pocketmoney.domain.models.TransactionWithCategory
 import com.example.pocketmoney.ui.theme.PocketMoneyTheme
+import com.example.pocketmoney.ui.theme.transactionColor
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,6 +37,8 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val dialogState by viewModel.dialogState.collectAsStateWithLifecycle()
+
+    val defaultCategory by viewModel.defaultCategory.collectAsStateWithLifecycle()
 
     PocketMoneyTheme {
         Scaffold(
@@ -71,7 +74,6 @@ fun HomeScreen(
             }
         ) { paddingValues ->
 
-            // ИСПРАВЛЕНО: Реализуем LCE паттерн через разбор состояний sealed-интерфейса
             when (val state = uiState) {
                 is HomeUiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
@@ -86,17 +88,14 @@ fun HomeScreen(
                 is HomeUiState.Content -> {
                     val data = state.state
 
-                    // Делаем КОРНЕВЫМ один общий LazyColumn вместо Column!
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(paddingValues)
                             .padding(horizontal = 16.dp)
                     ) {
-                        // Отступ сверху
                         item { Spacer(modifier = Modifier.height(16.dp)) }
 
-                        // 1. Карточка баланса лежит внутри item
                         item {
                             BalanceCard(
                                 balance = data.totalBalance,
@@ -106,7 +105,6 @@ fun HomeScreen(
                             )
                         }
 
-                        // 2. Блок курсов валют (внутри item)
                         if (data.rates.isNotEmpty()) {
                             item {
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -114,7 +112,6 @@ fun HomeScreen(
                             }
                         }
 
-                        // 3. Заголовок (внутри item)
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
@@ -124,34 +121,31 @@ fun HomeScreen(
                             )
                         }
 
-                        // 4. Обработка списка транзакций
                         if (data.transactions.isEmpty()) {
                             item {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(200.dp), // Фиксированная высота для красивого выравнивания
+                                        .height(200.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(text = "Список пуст", color = Color.Gray)
                                 }
                             }
                         } else {
-                            // Прямо сюда выводим элементы транзакций! Никаких вложенных LazyColumn!
                             items(
                                 items = data.transactions,
-                                key = { it.id }
-                            ) { transaction ->
-                                // Избавляемся от лишнего Box: вешаем клики прямо на Modifier элемента
+                                key = { it.transaction.id }
+                            ) { item ->
                                 TransactionItem(
-                                    transaction = transaction,
+                                    item = item,
                                     currency = data.currency,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 4.dp)
                                         .combinedClickable(
-                                            onClick = { /* Клик при необходимости */ },
-                                            onLongClick = { viewModel.confirmDeleteTransaction(transaction) }
+                                            onClick = { },
+                                            onLongClick = { viewModel.confirmDeleteTransaction(item.transaction) }
                                         )
                                 )
                             }
@@ -161,47 +155,50 @@ fun HomeScreen(
             }
         }
 
-        // ВСПЛЫВАЮЩИЕ ОКНА (берутся из независимого dialogState)
-        val currentCurrency = (uiState as? HomeUiState.Content)?.state?.currency ?: "RUB"
+        val contentState = uiState as? HomeUiState.Content
+        if (contentState != null) {
+            val data = contentState.state
 
-        if (dialogState.isAddDialogVisible) {
-            AddTransactionDialog(
-                currency = currentCurrency,
-                onDismiss = { viewModel.hideAddDialog() },
-                onSave = { amount, comment, isIncome ->
-                    viewModel.addTransaction(amount, comment, isIncome)
-                }
-            )
-        }
+            if (dialogState.isAddDialogVisible) {
+                AddTransactionDialog(
+                    currency = data.currency,
+                    categories = data.categories,
+                    initialCategory = defaultCategory,
+                    onDismiss = { viewModel.hideAddDialog() },
+                    onSave = { amount, comment, isIncome, categoryId, newCategoryName ->
+                        viewModel.addTransaction(amount, comment, isIncome, categoryId, newCategoryName)
+                    }
+                )
+            }
 
-        dialogState.transactionToDelete?.let { transaction ->
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissDeleteDialog() },
-                title = { Text("Удаление операции") },
-                text = {
-                    Text("Вы уверены, что хотите удалить запись " +
-                            (if (transaction.comment.isNotEmpty()) "\"${transaction.comment}\"" else "на сумму ${transaction.amount} $currentCurrency") +
-                            "?")
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = { viewModel.deleteTransaction(transaction) },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Удалить")
+            dialogState.transactionToDelete?.let { transaction ->
+                AlertDialog(
+                    onDismissRequest = { viewModel.dismissDeleteDialog() },
+                    title = { Text("Удаление операции") },
+                    text = {
+                        Text("Вы уверены, что хотите удалить запись " +
+                                (if (transaction.comment.isNotEmpty()) "\"${transaction.comment}\"" else "на сумму ${transaction.amount} ${data.currency}") +
+                                "?")
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = { viewModel.deleteTransaction(transaction) },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Удалить")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.dismissDeleteDialog() }) {
+                            Text("Отмена")
+                        }
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.dismissDeleteDialog() }) {
-                        Text("Отмена")
-                    }
-                }
-            )
+                )
+            }
         }
     }
 }
 
-// ИСПРАВЛЕНО: Теперь принимает доменный CurrencyRate вместо Entity из базы данных
 @Composable
 fun CurrencyRatesSection(rates: List<CurrencyRate>) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -244,7 +241,6 @@ fun CurrencyRatesSection(rates: List<CurrencyRate>) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BalanceCard(
     balance: Double,
@@ -255,9 +251,7 @@ fun BalanceCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
     ) {
         Column(
             modifier = Modifier.padding(24.dp),
@@ -281,14 +275,18 @@ fun BalanceCard(
 }
 
 @Composable
-fun TransactionItem(transaction: Transaction, currency: String,modifier: Modifier = Modifier) {
+fun TransactionItem(
+    item: TransactionWithCategory,
+    currency: String,
+    modifier: Modifier = Modifier
+) {
+    val transaction = item.transaction
+    val category = item.category
+
     val dateString = remember(transaction.date) {
         val sdf = SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault())
         sdf.format(Date(transaction.date))
     }
-
-    val incomeColor = Color(0xFF2E7D32)
-    val expenseColor = Color(0xFFC62828)
 
     Card(
         modifier = modifier,
@@ -301,19 +299,38 @@ fun TransactionItem(transaction: Transaction, currency: String,modifier: Modifie
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                if (transaction.comment.isNotEmpty()) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = category?.icon ?: "🏷️",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+
+                Column {
+                    val titleText = transaction.comment.ifEmpty {
+                        category?.name ?: "Без категории"
+                    }
+
                     Text(
-                        text = transaction.comment,
+                        text = titleText,
                         style = MaterialTheme.typography.bodyLarge
                     )
-                }
 
-                Text(
-                    text = dateString,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+                    val subtitleText = if (transaction.comment.isNotEmpty() && category != null) {
+                        "${category.name} • $dateString"
+                    } else {
+                        dateString
+                    }
+
+                    Text(
+                        text = subtitleText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             val isIncome = transaction.type == TransactionType.INCOME
@@ -322,7 +339,7 @@ fun TransactionItem(transaction: Transaction, currency: String,modifier: Modifie
             Text(
                 text = "${if (isIncome) "+" else "-"} $formattedAmount $currency",
                 style = MaterialTheme.typography.titleMedium,
-                color = if (isIncome) incomeColor else expenseColor
+                color = transactionColor(isIncome = isIncome)
             )
         }
     }

@@ -19,7 +19,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Включаем отображение "от края до края" (под статус-баром)
         enableEdgeToEdge()
 
         setContent {

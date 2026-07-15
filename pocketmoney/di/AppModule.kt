@@ -11,17 +11,19 @@ import com.example.pocketmoney.data.repository.FinanceRepositoryImpl
 
 import com.example.pocketmoney.domain.repository.CurrencyRepository // Интерфейс из Domain
 import com.example.pocketmoney.data.repository.CurrencyRepositoryImpl // Реализация из Data
+import com.example.pocketmoney.domain.usecase.AddCategoryUseCase
 
 // ИМПОРТ UseCases
 import com.example.pocketmoney.domain.usecase.AddTransactionUseCase
 import com.example.pocketmoney.domain.usecase.DeleteTransactionUseCase
-import com.example.pocketmoney.domain.usecase.GetTransactionsUseCase
 import com.example.pocketmoney.domain.usecase.GetAccountUseCase
 import com.example.pocketmoney.domain.usecase.RefreshCurrencyRatesUseCase
 import com.example.pocketmoney.domain.usecase.GetCurrencyRatesUseCase
 import com.example.pocketmoney.domain.usecase.GetHomeDisplayDataUseCase
 import com.example.pocketmoney.domain.usecase.GetRateUseCase
-
+import com.example.pocketmoney.domain.usecase.GetAllCategoriesUseCase
+import com.example.pocketmoney.domain.usecase.GetDefaultCategoryUseCase
+import com.example.pocketmoney.domain.usecase.GetFilteredTransactionsUseCase
 // ИМПОРТ ViewModels
 import com.example.pocketmoney.ui.home.HomeViewModel
 import com.example.pocketmoney.ui.transactions.TransactionsViewModel
@@ -41,10 +43,8 @@ import kotlinx.serialization.json.Json
 
 val appModule = module {
 
-    // 1. Слой данных: Хранилище настроек (DataStore) [cite: 7]
     single { SettingsManager(androidContext()) }
 
-    // 2. Слой данных: База данных Room [cite: 6]
     single {
         Room.databaseBuilder(
             androidContext(),
@@ -56,32 +56,31 @@ val appModule = module {
             .build()
     }
 
-    // 3. Слой данных: Предоставляем DAO для репозиториев
     single { get<AppDatabase>().financeDao() }
     single { get<AppDatabase>().currencyDao() }
+    single { get<AppDatabase>().categoryDao() }
 
-    // 4. Слой репозиториев: Связываем интерфейсы из Domain и реализации из Data [cite: 3]
     singleOf(::FinanceRepositoryImpl) { bind<FinanceRepository>() }
-    singleOf(::CurrencyRepositoryImpl) { bind<CurrencyRepository>() } // ИСПРАВЛЕНО: Связали валютный репозиторий!
+    singleOf(::CurrencyRepositoryImpl) { bind<CurrencyRepository>() }
 
-    // 5. Слой бизнес-логики (Domain): Регистрируем UseCases
     factoryOf(::AddTransactionUseCase)
     factoryOf(::DeleteTransactionUseCase)
-    factoryOf(::GetTransactionsUseCase)
     factoryOf(::GetAccountUseCase)
     factoryOf(::RefreshCurrencyRatesUseCase)
     factoryOf(::GetCurrencyRatesUseCase)
     factoryOf(::GetRateUseCase)
     factoryOf(::GetHomeDisplayDataUseCase)
+    factoryOf (::GetAllCategoriesUseCase)
+    factoryOf (::AddCategoryUseCase)
+    factoryOf (::GetFilteredTransactionsUseCase)
+    factoryOf (::GetDefaultCategoryUseCase)
 
-    // 6. Слой UI: Регистрируем ViewModels
     viewModelOf(::HomeViewModel)
-    viewModelOf(::TransactionsViewModel)
+    viewModelOf (::TransactionsViewModel)
     viewModelOf(::SettingsViewModel)
 }
 
 val networkModule = module {
-    // Создаем и настраиваем HttpClient (Ktor) [cite: 6]
     single {
         HttpClient {
             install(ContentNegotiation) {
@@ -93,6 +92,5 @@ val networkModule = module {
         }
     }
 
-    // Регистрируем наш API-сервис [cite: 6]
     single { CurrencyApiService(get()) }
 }

@@ -5,37 +5,42 @@ import androidx.lifecycle.viewModelScope
 import com.example.pocketmoney.data.preferences.SettingsManager
 import com.example.pocketmoney.domain.models.Transaction
 import com.example.pocketmoney.domain.models.TransactionType
+import com.example.pocketmoney.domain.models.Category
 import com.example.pocketmoney.domain.usecase.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
     getHomeDisplayDataUseCase: GetHomeDisplayDataUseCase,
-    getCurrencyRatesUseCase: GetCurrencyRatesUseCase, // Оставляем для передачи сырых rates в стейт, если нужно
+    getCurrencyRatesUseCase: GetCurrencyRatesUseCase,
+    getAllCategoriesUseCase: GetAllCategoriesUseCase,
     private val addTransactionUseCase: AddTransactionUseCase,
     private val deleteTransactionUseCase: DeleteTransactionUseCase,
     private val refreshCurrencyRatesUseCase: RefreshCurrencyRatesUseCase,
-    private val settingsManager: SettingsManager
+    private val settingsManager: SettingsManager,
+    private val addCategoryUseCase: AddCategoryUseCase,
+    private val getDefaultCategoryUseCase: GetDefaultCategoryUseCase
 ) : ViewModel() {
 
     private val _internalState = MutableStateFlow(HomeDialogState())
     val dialogState: StateFlow<HomeDialogState> = _internalState.asStateFlow()
 
-    // Соединяем готовые расчеты из UseCase и текущие курсы валют для UI
-    // Соединяем готовые расчеты из UseCase и текущие курсы валют для UI
+    private val _defaultCategory = MutableStateFlow<Category?>(null)
+    val defaultCategory: StateFlow<Category?> = _defaultCategory.asStateFlow()
+
     val uiState: StateFlow<HomeUiState> = combine(
         getHomeDisplayDataUseCase(),
-        getCurrencyRatesUseCase().onStart { emit(emptyList()) }
-    ) { domainData, currentRates ->
+        getCurrencyRatesUseCase().onStart { emit(emptyList()) },
+        getAllCategoriesUseCase().onStart { emit(emptyList()) }
+    ) { domainData, currentRates, currentCategories ->
         HomeUiState.Content(
             state = HomeState(
                 transactions = domainData.transactions,
                 totalBalance = domainData.totalBalance,
-                totalIncome = domainData.totalIncome,
-                totalExpenses = domainData.totalExpenses,
                 currency = domainData.currency,
                 isBalanceHidden = domainData.isBalanceHidden,
                 rates = currentRates,
+                categories = currentCategories,
                 isLoading = false
             )
         ) as HomeUiState
@@ -49,6 +54,14 @@ class HomeViewModel(
     init {
         viewModelScope.launch {
             try {
+                _defaultCategory.value = getDefaultCategoryUseCase()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
+        viewModelScope.launch {
+            try {
                 refreshCurrencyRatesUseCase()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -56,17 +69,37 @@ class HomeViewModel(
         }
     }
 
-    fun addTransaction(amount: Double, comment: String, isIncome: Boolean) {
+    fun addTransaction(
+        amount: Double,
+        comment: String,
+        isIncome: Boolean,
+        categoryId: Long?,
+        newCategoryName: String?
+    ) {
         viewModelScope.launch {
             val currentState = uiState.value
             if (currentState is HomeUiState.Content) {
                 val currentCurrency = currentState.state.currency
+
+                val finalCategoryId = if (newCategoryName != null) {
+                    val newCategory = Category(
+                        name = newCategoryName,
+                        icon = "🏷️",
+                        colorHex = "#607D8B"
+                    )
+                    addCategoryUseCase(newCategory)
+                } else {
+                    categoryId ?: _defaultCategory.value?.id ?: 5L
+                }
+
                 val newTx = Transaction(
                     amount = amount,
+                    categoryId = finalCategoryId,
                     date = System.currentTimeMillis(),
                     comment = comment,
                     type = if (isIncome) TransactionType.INCOME else TransactionType.EXPENSE
                 )
+
                 addTransactionUseCase(newTx, currentCurrency)
                 hideAddDialog()
             }

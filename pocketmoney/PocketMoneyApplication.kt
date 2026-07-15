@@ -11,9 +11,7 @@ class PocketMoneyApplication : Application() {
         super.onCreate()
 
         startKoin {
-            // Передаем контекст Android (нужен для Room)
             androidContext(this@PocketMoneyApplication)
-            // Загружаем наши правила из AppModule
             modules(appModule, networkModule)
         }
     }

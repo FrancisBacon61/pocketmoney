@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
@@ -15,7 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.pocketmoney.domain.models.TransactionType // ИСПРАВЛЕНО: Добавили импорт Enum типа транзакции
+// ИСПРАВЛЕНО: Добавили необходимый импорт для работы с жизненным циклом
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.pocketmoney.domain.models.TransactionType
 import com.example.pocketmoney.ui.home.TransactionItem
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
@@ -27,12 +28,9 @@ fun TransactionsScreen(
     onBack: () -> Unit,
     viewModel: TransactionsViewModel = koinViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Состояние для открытия/закрытия диалога календаря
     var showDatePicker by remember { mutableStateOf(false) }
-
-    // Форматтер для красивого отображения дат пользователю
     val dateFormatter = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
 
     Scaffold(
@@ -57,22 +55,20 @@ fun TransactionsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // --- ИСПРАВЛЕНО: Панель фильтров по типу транзакции (Доход / Расход) ---
+            // Лента фильтрации 1: По типу транзакции
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Кнопка "Все"
                 item {
                     FilterChip(
                         selected = state.selectedType == null,
                         onClick = { viewModel.selectType(null) },
-                        label = { Text("Все") }
+                        label = { Text("Все операции") }
                     )
                 }
-                // Кнопка "Доходы"
                 item {
                     FilterChip(
                         selected = state.selectedType == TransactionType.INCOME,
@@ -80,13 +76,38 @@ fun TransactionsScreen(
                         label = { Text("Доходы") }
                     )
                 }
-                // Кнопка "Расходы"
                 item {
                     FilterChip(
                         selected = state.selectedType == TransactionType.EXPENSE,
                         onClick = { viewModel.selectType(TransactionType.EXPENSE) },
                         label = { Text("Расходы") }
                     )
+                }
+            }
+
+            // Лента фильтрации 2: По категориям
+            if (state.categories.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(end = 16.dp)
+                ) {
+                    item {
+                        FilterChip(
+                            selected = state.selectedCategoryId == null,
+                            onClick = { viewModel.selectCategory(null) },
+                            label = { Text("Все категории") }
+                        )
+                    }
+                    items(items = state.categories, key = { it.id }) { category ->
+                        FilterChip(
+                            selected = state.selectedCategoryId == category.id,
+                            onClick = { viewModel.selectCategory(category.id) },
+                            label = { Text("${category.icon} ${category.name}") }
+                        )
+                    }
                 }
             }
 
@@ -97,7 +118,7 @@ fun TransactionsScreen(
 
                 InputChip(
                     selected = true,
-                    onClick = { viewModel.selectDateRange(null, null) }, // Сброс при клике
+                    onClick = { viewModel.selectDateRange(null, null) },
                     label = { Text("Период: $startStr - $endStr") },
                     trailingIcon = {
                         Icon(
@@ -110,7 +131,9 @@ fun TransactionsScreen(
                 )
             }
 
-            // --- Список транзакций ---
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Список транзакций
             if (state.transactions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text("Ничего не найдено", color = Color.Gray)
@@ -120,11 +143,15 @@ fun TransactionsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(state.transactions, key = { it.id }) { transaction ->
+                    items(
+                        items = state.transactions,
+                        key = { it.transaction.id }
+                    ) { transactionWithCategory ->
                         TransactionItem(
-                            transaction = transaction,
+                            item = transactionWithCategory,
                             currency = state.currency
                         )
                     }
@@ -133,7 +160,7 @@ fun TransactionsScreen(
         }
     }
 
-    // Диалоговое окно выбора диапазона дат (Material 3 DateRangePicker)
+    // Календарь
     if (showDatePicker) {
         val dateRangePickerState = rememberDateRangePickerState()
 

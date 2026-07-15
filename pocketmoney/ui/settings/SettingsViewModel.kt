@@ -4,22 +4,38 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pocketmoney.data.preferences.SettingsManager
 import com.example.pocketmoney.domain.repository.FinanceRepository
-import com.example.pocketmoney.domain.usecase.RefreshCurrencyRatesUseCase // Импортируем юзкейс
+import com.example.pocketmoney.domain.usecase.RefreshCurrencyRatesUseCase
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
     private val settingsManager: SettingsManager,
     private val financeRepository: FinanceRepository,
-    private val refreshCurrencyRatesUseCase: RefreshCurrencyRatesUseCase // ИСПРАВЛЕНО: Теперь тут UseCase!
+    private val refreshCurrencyRatesUseCase: RefreshCurrencyRatesUseCase
 ) : ViewModel() {
 
-    val currency = settingsManager.currency.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "RUB")
-    val isBalanceHidden = settingsManager.isBalanceHidden.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-    val lastCurrencyUpdate = settingsManager.lastCurrencyUpdate.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
-
     private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing = _isRefreshing.asStateFlow()
+    private val _currencyError = MutableStateFlow<String?>(null)
+
+    val uiState: StateFlow<SettingsUiState> = combine(
+        settingsManager.currency,
+        settingsManager.isBalanceHidden,
+        settingsManager.lastCurrencyUpdate,
+        _isRefreshing,
+        _currencyError
+    ) { currency, isBalanceHidden, lastUpdate, isRefreshing, error ->
+        SettingsUiState(
+            currency = currency,
+            isBalanceHidden = isBalanceHidden,
+            lastCurrencyUpdate = lastUpdate,
+            isRefreshing = isRefreshing,
+            currencyError = error
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = SettingsUiState()
+    )
 
     fun setCurrency(code: String) {
         viewModelScope.launch {
@@ -29,14 +45,25 @@ class SettingsViewModel(
     }
 
     fun toggleBalanceHidden(hidden: Boolean) {
-        viewModelScope.launch { settingsManager.setBalanceHidden(hidden) }
+        viewModelScope.launch {
+            settingsManager.setBalanceHidden(hidden)
+        }
     }
 
     fun refreshRates(forceRefresh: Boolean = true) {
         viewModelScope.launch {
             _isRefreshing.value = true
-            refreshCurrencyRatesUseCase(forceRefresh = forceRefresh)
-            _isRefreshing.value = false
+            _currencyError.value = null
+
+            try {
+                refreshCurrencyRatesUseCase(forceRefresh = forceRefresh)
+            } catch (e: Exception) {
+                e.printStackTrace()
+
+                _currencyError.value = "Нет подключения к интернету"
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 
