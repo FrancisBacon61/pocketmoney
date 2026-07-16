@@ -5,5 +5,5 @@ data class SettingsUiState(
     val isBalanceHidden: Boolean = false,
     val lastCurrencyUpdate: Long = 0L,
     val isRefreshing: Boolean = false,
-    val currencyError: String? = null
+    val currencyError: CurrencyError? = null
 )

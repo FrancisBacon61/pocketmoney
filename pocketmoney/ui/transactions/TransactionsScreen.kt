@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,8 +31,8 @@ fun TransactionsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var showDatePicker by remember { mutableStateOf(false) }
-    val dateFormatter = remember { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
+    var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    val dateFormatter = rememberSaveable { SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()) }
 
     Scaffold(
         topBar = {

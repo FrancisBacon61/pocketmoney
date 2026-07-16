@@ -18,7 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.pocketmoney.R
 import com.example.pocketmoney.domain.models.CurrencyRate
 import com.example.pocketmoney.domain.models.TransactionType
 import com.example.pocketmoney.domain.models.TransactionWithCategory
@@ -44,12 +46,12 @@ fun HomeScreen(
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Мои финансы") },
+                    title = { Text(stringResource(R.string.home_title)) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateToSettings) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Настройки"
+                                contentDescription = stringResource(R.string.content_settings)
                             )
                         }
                     },
@@ -57,7 +59,7 @@ fun HomeScreen(
                         IconButton(onClick = onNavigateToTransactions) {
                             Icon(
                                 imageVector = Icons.Default.History,
-                                contentDescription = "История транзакций"
+                                contentDescription = stringResource(R.string.content_history)
                             )
                         }
                     },
@@ -69,20 +71,36 @@ fun HomeScreen(
             },
             floatingActionButton = {
                 FloatingActionButton(onClick = { viewModel.showAddDialog() }) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Добавить")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = stringResource(R.string.content_add)
+                    )
                 }
             }
         ) { paddingValues ->
 
             when (val state = uiState) {
                 is HomeUiState.Loading -> {
-                    Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 }
                 is HomeUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                        Text(text = "Ошибка: ${state.message}", color = MaterialTheme.colorScheme.error)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.error_message_format, state.message),
+                            color = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
                 is HomeUiState.Content -> {
@@ -115,7 +133,7 @@ fun HomeScreen(
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
-                                text = "Последние операции",
+                                text = stringResource(R.string.recent_transactions_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
@@ -129,7 +147,10 @@ fun HomeScreen(
                                         .height(200.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(text = "Список пуст", color = Color.Gray)
+                                    Text(
+                                        text = stringResource(R.string.empty_list_message),
+                                        color = Color.Gray
+                                    )
                                 }
                             }
                         } else {
@@ -174,23 +195,27 @@ fun HomeScreen(
             dialogState.transactionToDelete?.let { transaction ->
                 AlertDialog(
                     onDismissRequest = { viewModel.dismissDeleteDialog() },
-                    title = { Text("Удаление операции") },
+                    title = { Text(stringResource(R.string.delete_dialog_title)) },
                     text = {
-                        Text("Вы уверены, что хотите удалить запись " +
-                                (if (transaction.comment.isNotEmpty()) "\"${transaction.comment}\"" else "на сумму ${transaction.amount} ${data.currency}") +
-                                "?")
+                        val deleteMessage = if (transaction.comment.isNotEmpty()) {
+                            stringResource(R.string.delete_confirm_with_comment, transaction.comment)
+                        } else {
+                            val formattedAmount = String.format(Locale.US, "%.2f", transaction.amount)
+                            stringResource(R.string.delete_confirm_with_amount, formattedAmount, data.currency)
+                        }
+                        Text(text = deleteMessage)
                     },
                     confirmButton = {
                         TextButton(
                             onClick = { viewModel.deleteTransaction(transaction) },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("Удалить")
+                            Text(stringResource(R.string.delete))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { viewModel.dismissDeleteDialog() }) {
-                            Text("Отмена")
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 )
@@ -203,7 +228,7 @@ fun HomeScreen(
 fun CurrencyRatesSection(rates: List<CurrencyRate>) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Курсы валют",
+            text = stringResource(R.string.currency_rates_title),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
@@ -258,7 +283,7 @@ fun BalanceCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Общий баланс",
+                text = stringResource(R.string.total_balance_title),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
             )
@@ -266,7 +291,7 @@ fun BalanceCard(
             val displayAmount = if (isHidden) "****" else String.format(Locale.US, "%.2f", balance)
 
             Text(
-                text = "$displayAmount $currency",
+                text = stringResource(R.string.balance_format, displayAmount, currency),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onPrimary
             )
@@ -311,7 +336,7 @@ fun TransactionItem(
 
                 Column {
                     val titleText = transaction.comment.ifEmpty {
-                        category?.name ?: "Без категории"
+                        category?.name ?: stringResource(R.string.no_category)
                     }
 
                     Text(
@@ -320,7 +345,7 @@ fun TransactionItem(
                     )
 
                     val subtitleText = if (transaction.comment.isNotEmpty() && category != null) {
-                        "${category.name} • $dateString"
+                        stringResource(R.string.transaction_subtitle_format, category.name, dateString)
                     } else {
                         dateString
                     }
@@ -337,7 +362,11 @@ fun TransactionItem(
             val formattedAmount = String.format(Locale.US, "%.2f", transaction.amount)
 
             Text(
-                text = "${if (isIncome) "+" else "-"} $formattedAmount $currency",
+                text = stringResource(
+                    if (isIncome) R.string.income_amount_format else R.string.expense_amount_format,
+                    formattedAmount,
+                    currency
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 color = transactionColor(isIncome = isIncome)
             )

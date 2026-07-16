@@ -15,7 +15,8 @@ class SettingsViewModel(
 ) : ViewModel() {
 
     private val _isRefreshing = MutableStateFlow(false)
-    private val _currencyError = MutableStateFlow<String?>(null)
+
+    private val _currencyError = MutableStateFlow<CurrencyError?>(null)
 
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsManager.currency,
@@ -57,10 +58,12 @@ class SettingsViewModel(
 
             try {
                 refreshCurrencyRatesUseCase(forceRefresh = forceRefresh)
+            } catch (e: java.io.IOException) {
+                e.printStackTrace()
+                _currencyError.value = CurrencyError.NO_INTERNET
             } catch (e: Exception) {
                 e.printStackTrace()
-
-                _currencyError.value = "Нет подключения к интернету"
+                _currencyError.value = CurrencyError.UNKNOWN
             } finally {
                 _isRefreshing.value = false
             }

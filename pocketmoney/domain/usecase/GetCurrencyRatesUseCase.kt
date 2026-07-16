@@ -8,10 +8,10 @@ import kotlinx.coroutines.flow.map
 class GetCurrencyRatesUseCase(
     private val currencyRepository: CurrencyRepository
 ) {
-    operator fun invoke(): Flow<List<CurrencyRate>> { // Класс остается СТАРЫМ
+    operator fun invoke(): Flow<List<CurrencyRate>> {
         return currencyRepository.allRatesFlow.map { rawList ->
             rawList
-                .filter { it.code != "RUB" } // 1. Просто убираем рубль из списка
+                .filter { it.code != "RUB" }
                 .map { item ->
                     val normalRate = if (item.rate > 0) 1.0 / item.rate else 0.0
 

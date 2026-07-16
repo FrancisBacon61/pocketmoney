@@ -6,9 +6,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.pocketmoney.R
 import com.example.pocketmoney.domain.models.Category
 
 // Регулярное выражение: разрешает только цифры, максимум одну точку и до 2 знаков после запятой
@@ -23,18 +26,22 @@ fun AddTransactionDialog(
     onDismiss: () -> Unit,
     onSave: (amount: Double, comment: String, isIncome: Boolean, categoryId: Long?, newCategoryName: String?) -> Unit
 ) {
-    var amountText by remember { mutableStateOf("") }
-    var commentText by remember { mutableStateOf("") }
-    var isIncome by remember { mutableStateOf(false) }
+    var amountText by rememberSaveable { mutableStateOf("") }
+    var commentText by rememberSaveable { mutableStateOf("") }
+    var isIncome by rememberSaveable { mutableStateOf(false) }
 
-    var menuExpanded by remember { mutableStateOf(false) }
+    var menuExpanded by rememberSaveable { mutableStateOf(false) }
 
-    var selectedCategory by remember(categories, initialCategory) {
-        mutableStateOf(initialCategory ?: categories.firstOrNull())
+    var selectedCategoryId by rememberSaveable(categories, initialCategory) {
+        mutableStateOf(initialCategory?.id ?: categories.firstOrNull()?.id)
     }
 
-    var isCustomCategory by remember { mutableStateOf(false) }
-    var customCategoryName by remember { mutableStateOf("") }
+    val selectedCategory = remember(selectedCategoryId, categories) {
+        categories.find { it.id == selectedCategoryId }
+    }
+
+    var isCustomCategory by rememberSaveable { mutableStateOf(false) }
+    var customCategoryName by rememberSaveable { mutableStateOf("") }
 
     val amount = amountText.toDoubleOrNull()
     val isAmountValid = amount != null && amount > 0
@@ -47,7 +54,7 @@ fun AddTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isIncome) "Новый доход" else "Новый расход") },
+        title = { Text(if (isIncome) stringResource(R.string.new_income) else stringResource(R.string.new_expense)) },
         text = {
             Column(
                 modifier = Modifier
@@ -62,12 +69,12 @@ fun AddTransactionDialog(
                     FilterChip(
                         selected = !isIncome,
                         onClick = { isIncome = false },
-                        label = { Text("Расход") }
+                        label = { Text(stringResource(R.string.expense)) }
                     )
                     FilterChip(
                         selected = isIncome,
                         onClick = { isIncome = true },
-                        label = { Text("Доход") }
+                        label = { Text(stringResource(R.string.income)) }
                     )
                 }
 
@@ -79,13 +86,13 @@ fun AddTransactionDialog(
                             amountText = formatted
                         }
                     },
-                    label = { Text("Сумма ($currency)") },
+                    label = { Text(stringResource(R.string.amount_label, currency)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
                     isError = isAmountError,
                     supportingText = {
                         if (isAmountError) {
-                            Text(text = "Введите корректное число", color = MaterialTheme.colorScheme.error)
+                            Text(text = stringResource(R.string.enter_number), color = MaterialTheme.colorScheme.error)
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -96,16 +103,18 @@ fun AddTransactionDialog(
                     onExpandedChange = { menuExpanded = !menuExpanded }
                 ) {
                     val categoryFieldText = if (isCustomCategory) {
-                        "➕ Своя категория..."
+                        stringResource(R.string.custom_category_title)
                     } else {
-                        "${selectedCategory?.icon ?: "🏷️"} ${selectedCategory?.name ?: "Не выбрана"}"
+                        "${selectedCategory?.icon ?: "🏷️"} ${selectedCategory?.name ?: stringResource(
+                            R.string.no_selected
+                        )}"
                     }
 
                     OutlinedTextField(
                         value = categoryFieldText,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Категория") },
+                        label = { Text(stringResource(R.string.category_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuExpanded) },
                         colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                         modifier = Modifier
@@ -124,7 +133,7 @@ fun AddTransactionDialog(
                             DropdownMenuItem(
                                 text = { Text("${category.icon}  ${category.name}") },
                                 onClick = {
-                                    selectedCategory = category
+                                    selectedCategoryId = category.id
                                     isCustomCategory = false
                                     menuExpanded = false
                                 }
@@ -134,7 +143,7 @@ fun AddTransactionDialog(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("➕ Добавить свою...") },
+                            text = { Text(stringResource(R.string.custom_category_prompt)) },
                             onClick = {
                                 isCustomCategory = true
                                 menuExpanded = false
@@ -147,7 +156,7 @@ fun AddTransactionDialog(
                     OutlinedTextField(
                         value = customCategoryName,
                         onValueChange = { customCategoryName = it },
-                        label = { Text("Название новой категории") },
+                        label = { Text(stringResource(R.string.new_category_name)) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -156,7 +165,7 @@ fun AddTransactionDialog(
                 OutlinedTextField(
                     value = commentText,
                     onValueChange = { commentText = it },
-                    label = { Text("Комментарий") },
+                    label = { Text(stringResource(R.string.comment)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -177,12 +186,12 @@ fun AddTransactionDialog(
                 },
                 enabled = isSaveEnabled
             ) {
-                Text("Сохранить")
+                Text(stringResource(R.string.save))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
